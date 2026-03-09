@@ -9,13 +9,6 @@ const swaggerSpec = require('./swagger');
 
 const authRoutes = require('./routes/auth');
 const usersRoutes = require('./routes/users');
-const equipmentsRoutes = require('./routes/equipments');
-const licensesRoutes = require('./routes/licenses');
-const searchRoutes = require('./routes/search');
-const exportRoutes = require('./routes/export');
-const statsRoutes = require('./routes/stats');
-
-require('./cron/notifications');
 
 const app = express();
 
@@ -40,11 +33,6 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use('/api/auth', authRoutes);
 app.use('/api/users', usersRoutes);
-app.use('/api/equipments', equipmentsRoutes);
-app.use('/api/licenses', licensesRoutes);
-app.use('/api/search', searchRoutes);
-app.use('/api/export', exportRoutes);
-app.use('/api/stats', statsRoutes);
 
 // ── Health Check ────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {

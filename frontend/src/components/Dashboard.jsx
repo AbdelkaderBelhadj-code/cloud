@@ -4,23 +4,7 @@ import { selectAuth, selectIsAdmin, logout } from '../store/authSlice'
 import { useTheme } from '../context/ThemeContext'
 import toast from 'react-hot-toast'
 
-import GlobalSearch from './GlobalSearch'
-import DashboardStats from './DashboardStats'
-import SearchEquip from './SearchEquip'
-import SearchLicense from './SearchLicense'
-import ManageEquipments from './ManageEquipments'
-import ManageLicenses from './ManageLicenses'
-import ExportPanel from './ExportPanel'
 import AdminUsers from './AdminUsers'
-
-const TABS = [
-    { id: 'stats', label: '📊 Tableau de Bord', icon: '📊' },
-    { id: 'search-equip', label: '🔍 Chercher Équipement', icon: '🖥️' },
-    { id: 'search-license', label: '🔍 Chercher Licence', icon: '📄' },
-    { id: 'manage-equip', label: '⚙️ Gérer Équipements', icon: '🔧' },
-    { id: 'manage-license', label: '⚙️ Gérer Licences', icon: '🗝️' },
-    { id: 'export', label: '📤 Export & Email', icon: '📤' },
-]
 
 const ADMIN_TABS = [
     { id: 'admin-users', label: '👥 Gestion Utilisateurs', icon: '👥', adminOnly: true },
@@ -31,35 +15,24 @@ export default function Dashboard() {
     const { user } = useSelector(selectAuth)
     const isAdmin = useSelector(selectIsAdmin)
     const { theme, toggleTheme } = useTheme()
-    const [activeTab, setActiveTab] = useState('stats')
+    const [activeTab, setActiveTab] = useState('admin-users')
     const [sidebarOpen, setSidebarOpen] = useState(true)
 
-    const allTabs = isAdmin ? [...TABS, ...ADMIN_TABS] : TABS
+    const allTabs = isAdmin ? ADMIN_TABS : []
 
     const handleLogout = () => {
         dispatch(logout())
         toast.success('Déconnexion réussie')
     }
 
-    const handleSearchNavigate = (type) => {
-        if (type === 'equipment') setActiveTab('manage-equip')
-        else if (type === 'license') setActiveTab('manage-license')
-    }
-
     const renderTab = () => {
         switch (activeTab) {
-            case 'stats': return <DashboardStats />
-            case 'search-equip': return <SearchEquip />
-            case 'search-license': return <SearchLicense />
-            case 'manage-equip': return <ManageEquipments />
-            case 'manage-license': return <ManageLicenses />
-            case 'export': return <ExportPanel />
-            case 'admin-users': return isAdmin ? <AdminUsers /> : null
-            default: return <DashboardStats />
+            case 'admin-users': return isAdmin ? <AdminUsers /> : <div className="p-4">Hello.</div>
+            default: return <div className="p-4">Onglet invalide.</div>
         }
     }
 
-    const activeTabLabel = allTabs.find((t) => t.id === activeTab)?.label || ''
+    const activeTabLabel = allTabs.find((t) => t.id === activeTab)?.label || 'Dashboard'
 
     return (
         <div className="flex h-screen overflow-hidden">
@@ -87,20 +60,6 @@ export default function Dashboard() {
                         <p className="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Navigation</p>
                     )}
                     <ul className="space-y-1 px-2">
-                        {TABS.map((tab) => (
-                            <li key={tab.id}>
-                                <button
-                                    onClick={() => setActiveTab(tab.id)}
-                                    title={!sidebarOpen ? tab.label : undefined}
-                                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${activeTab === tab.id ? 'tab-active' : 'tab-inactive'
-                                        }`}
-                                >
-                                    <span className="text-base flex-shrink-0">{tab.icon}</span>
-                                    {sidebarOpen && <span>{tab.label.replace(/^[^ ]+ /, '')}</span>}
-                                </button>
-                            </li>
-                        ))}
-
                         {isAdmin && (
                             <>
                                 {sidebarOpen && (
@@ -114,8 +73,8 @@ export default function Dashboard() {
                                             onClick={() => setActiveTab(tab.id)}
                                             title={!sidebarOpen ? tab.label : undefined}
                                             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${activeTab === tab.id
-                                                    ? 'bg-purple-600 text-white shadow-lg'
-                                                    : 'text-purple-400 hover:text-purple-200 hover:bg-purple-600/20'
+                                                ? 'bg-purple-600 text-white shadow-lg'
+                                                : 'text-purple-400 hover:text-purple-200 hover:bg-purple-600/20'
                                                 }`}
                                         >
                                             <span className="text-base flex-shrink-0">{tab.icon}</span>
@@ -191,7 +150,6 @@ export default function Dashboard() {
                     </div>
 
                     <div className="flex items-center gap-4 flex-1 justify-end">
-                        <GlobalSearch onNavigate={handleSearchNavigate} />
                         <button
                             onClick={toggleTheme}
                             className="flex-shrink-0 w-9 h-9 rounded-xl bg-dark-600 border border-dark-500 flex items-center justify-center
