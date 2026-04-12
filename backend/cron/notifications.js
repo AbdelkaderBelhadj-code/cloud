@@ -76,10 +76,6 @@ async function runLicenseExpiryCheck() {
         console.log(`[CRON] Daily rappel sent for ${listDaily.length} license(s).`);
     }
 
-    if (list90.length === 0 && list30.length === 0 && listDaily.length === 0) {
-        console.log('[CRON] No notifications to send.');
-    }
-
     return {
         expired: expiredResult.modifiedCount,
         sent90d: list90.length,
@@ -89,10 +85,10 @@ async function runLicenseExpiryCheck() {
 }
 
 /**
- * Daily cron at 08:00 — tiered expiry notifications (90d / 30d / daily / expire).
+ * Cron every minute — catches the 90d/30d thresholds as soon as they are crossed.
+ * Dedup flags (notifiedAt90d, notifiedAt30d, lastDailyNotificationAt) prevent re-sends.
  */
-cron.schedule('0 8 * * *', async () => {
-    console.log('[CRON] Checking license expiry tiers...');
+cron.schedule('* * * * *', async () => {
     try {
         await runLicenseExpiryCheck();
     } catch (err) {
@@ -100,6 +96,6 @@ cron.schedule('0 8 * * *', async () => {
     }
 });
 
-console.log('[CRON] License notification scheduler started (daily @ 08:00)');
+console.log('[CRON] License notification scheduler started (every minute)');
 
 module.exports = { runLicenseExpiryCheck };
