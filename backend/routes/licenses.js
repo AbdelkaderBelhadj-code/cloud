@@ -69,7 +69,7 @@ router.get('/:id', async (req, res) => {
 // POST /api/licenses
 router.post('/', async (req, res) => {
     try {
-        const { error, value } = licenseSchema.validate(req.body);
+        const { error, value } = licenseSchema.validate(req.body, { stripUnknown: true });
         if (error) return res.status(400).json({ message: error.details[0].message });
 
         const lic = new License({ ...value, createdBy: req.user._id });
@@ -84,7 +84,7 @@ router.post('/', async (req, res) => {
 // PUT /api/licenses/:id
 router.put('/:id', async (req, res) => {
     try {
-        const { error, value } = licenseSchema.validate(req.body);
+        const { error, value } = licenseSchema.validate(req.body, { stripUnknown: true });
         if (error) return res.status(400).json({ message: error.details[0].message });
 
         // Reset notification flags if expirationDate moved back beyond a threshold
