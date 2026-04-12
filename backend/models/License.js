@@ -47,9 +47,17 @@ const LicenseSchema = new mongoose.Schema(
             ref: 'Equipment',
             default: null,
         },
-        notificationSent: {
-            type: Boolean,
-            default: false,
+        notifiedAt90d: {
+            type: Date,
+            default: null,
+        },
+        notifiedAt30d: {
+            type: Date,
+            default: null,
+        },
+        lastDailyNotificationAt: {
+            type: Date,
+            default: null,
         },
         createdBy: {
             type: mongoose.Schema.Types.ObjectId,

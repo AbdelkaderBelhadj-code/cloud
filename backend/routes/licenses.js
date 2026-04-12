@@ -87,11 +87,28 @@ router.put('/:id', async (req, res) => {
         const { error, value } = licenseSchema.validate(req.body);
         if (error) return res.status(400).json({ message: error.details[0].message });
 
-        const lic = await License.findByIdAndUpdate(req.params.id, value, {
+        // Reset notification flags if expirationDate moved back beyond a threshold
+        const existing = await License.findById(req.params.id);
+        if (!existing) return res.status(404).json({ message: 'License not found' });
+
+        const update = { ...value };
+        if (value.expirationDate && new Date(value.expirationDate).getTime() !== new Date(existing.expirationDate).getTime()) {
+            const DAY = 24 * 60 * 60 * 1000;
+            const diff = new Date(value.expirationDate).getTime() - Date.now();
+            if (diff > 90 * DAY) {
+                update.notifiedAt90d = null;
+                update.notifiedAt30d = null;
+                update.lastDailyNotificationAt = null;
+            } else if (diff > 30 * DAY) {
+                update.notifiedAt30d = null;
+                update.lastDailyNotificationAt = null;
+            }
+        }
+
+        const lic = await License.findByIdAndUpdate(req.params.id, update, {
             new: true,
             runValidators: true,
         }).populate('equipmentId', 'serviceTag type model');
-        if (!lic) return res.status(404).json({ message: 'License not found' });
         res.json(lic);
     } catch (err) {
         res.status(500).json({ message: err.message });

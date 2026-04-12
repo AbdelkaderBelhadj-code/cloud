@@ -150,9 +150,28 @@ const buildExportEmailHtml = ({ filename, recipientEmail }) => {
 /**
  * Send license expiry notification
  */
-const sendExpiryNotification = async (licenses) => {
+const sendExpiryNotification = async (licenses, { stage = '30d' } = {}) => {
     const urgentCount = licenses.filter((l) => l.daysUntilExpiry <= 7).length;
     const warningCount = licenses.filter((l) => l.daysUntilExpiry > 7).length;
+
+    const stageMap = {
+        '90d': {
+            heading: 'Preavis — expiration dans 3 mois',
+            subject: `[NextStep IT] Licences — preavis 90 jours (${licenses.length})`,
+            text: `${licenses.length} licence(s) expirent dans moins de 90 jours.`,
+        },
+        '30d': {
+            heading: 'Preavis — expiration dans 1 mois',
+            subject: `[NextStep IT] Licences — preavis 30 jours (${licenses.length})${urgentCount > 0 ? ` — ${urgentCount} urgente(s)` : ''}`,
+            text: `${licenses.length} licence(s) expirent dans moins de 30 jours.`,
+        },
+        daily: {
+            heading: 'Rappel quotidien — expiration imminente',
+            subject: `[NextStep IT] Rappel quotidien — ${licenses.length} licence(s)${urgentCount > 0 ? ` — ${urgentCount} urgente(s)` : ''}`,
+            text: `Rappel quotidien : ${licenses.length} licence(s) expirent sous 30 jours.`,
+        },
+    };
+    const meta = stageMap[stage] || stageMap['30d'];
 
     const getDaysStyle = (days) => {
         if (days <= 3) return 'background:#fef2f2;color:#dc2626;font-weight:700';
@@ -178,7 +197,7 @@ const sendExpiryNotification = async (licenses) => {
         .join('');
 
     const content = `
-        <h2 style="color:#1e3a5f;margin:0 0 8px;font-size:20px;font-weight:600">Alerte — Licences expirant bientot</h2>
+        <h2 style="color:#1e3a5f;margin:0 0 8px;font-size:20px;font-weight:600">${meta.heading}</h2>
         <p style="color:#64748b;margin:0 0 24px;font-size:14px">${new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
 
         <!-- Stats Cards -->
@@ -227,8 +246,8 @@ const sendExpiryNotification = async (licenses) => {
 
     return sendEmail({
         to: process.env.NOTIFICATION_EMAIL || 'cloud@nextstep-it.com',
-        subject: `[NextStep IT] ${licenses.length} licence(s) expirant bientot${urgentCount > 0 ? ` — ${urgentCount} urgente(s)` : ''}`,
-        text: `${licenses.length} licence(s) expirent dans moins de 30 jours. ${urgentCount} urgente(s) dans les 7 prochains jours.`,
+        subject: meta.subject,
+        text: meta.text,
         html: emailLayout(content),
     });
 };
