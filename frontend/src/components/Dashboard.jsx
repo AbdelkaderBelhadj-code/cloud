@@ -12,19 +12,23 @@ import ManageEquipments from './ManageEquipments'
 import ManageLicenses from './ManageLicenses'
 import ExportPanel from './ExportPanel'
 import AdminUsers from './AdminUsers'
+import AdminCategories from './AdminCategories'
 
 const TABS = [
     { id: 'stats', label: '📊 Tableau de Bord', icon: '📊' },
     { id: 'search-equip', label: '🔍 Chercher Équipement', icon: '🖥️' },
     { id: 'search-license', label: '🔍 Chercher Licence', icon: '📄' },
-    { id: 'manage-equip', label: '⚙️ Gérer Équipements', icon: '🔧' },
-    { id: 'manage-license', label: '⚙️ Gérer Licences', icon: '🗝️' },
     { id: 'export', label: '📤 Export & Email', icon: '📤' },
 ]
 
 const ADMIN_TABS = [
+    { id: 'manage-equip', label: '⚙️ Gérer Équipements', icon: '🔧', adminOnly: true },
+    { id: 'manage-license', label: '⚙️ Gérer Licences', icon: '🗝️', adminOnly: true },
+    { id: 'admin-categories', label: '🏷️ Catégories Licences', icon: '🏷️', adminOnly: true },
     { id: 'admin-users', label: '👥 Gestion Utilisateurs', icon: '👥', adminOnly: true },
 ]
+
+const ADMIN_TAB_IDS = new Set(ADMIN_TABS.map((t) => t.id))
 
 export default function Dashboard() {
     const dispatch = useDispatch()
@@ -42,19 +46,23 @@ export default function Dashboard() {
     }
 
     const handleSearchNavigate = (type) => {
-        if (type === 'equipment') setActiveTab('manage-equip')
-        else if (type === 'license') setActiveTab('manage-license')
+        if (type === 'equipment') setActiveTab(isAdmin ? 'manage-equip' : 'search-equip')
+        else if (type === 'license') setActiveTab(isAdmin ? 'manage-license' : 'search-license')
     }
 
+    // Guard: non-admins cannot land on an admin-only tab even if the id is set programmatically.
+    const safeActiveTab = !isAdmin && ADMIN_TAB_IDS.has(activeTab) ? 'stats' : activeTab
+
     const renderTab = () => {
-        switch (activeTab) {
+        switch (safeActiveTab) {
             case 'stats': return <DashboardStats />
             case 'search-equip': return <SearchEquip />
             case 'search-license': return <SearchLicense />
-            case 'manage-equip': return <ManageEquipments />
-            case 'manage-license': return <ManageLicenses />
+            case 'manage-equip': return isAdmin ? <ManageEquipments /> : null
+            case 'manage-license': return isAdmin ? <ManageLicenses /> : null
             case 'export': return <ExportPanel />
             case 'admin-users': return isAdmin ? <AdminUsers /> : null
+            case 'admin-categories': return isAdmin ? <AdminCategories /> : null
             default: return <DashboardStats />
         }
     }

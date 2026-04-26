@@ -14,6 +14,7 @@ const licensesRoutes = require('./routes/licenses');
 const searchRoutes = require('./routes/search');
 const exportRoutes = require('./routes/export');
 const statsRoutes = require('./routes/stats');
+const categoriesRoutes = require('./routes/categories');
 
 require('./cron/notifications');
 
@@ -45,6 +46,7 @@ app.use('/api/licenses', licensesRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api/stats', statsRoutes);
+app.use('/api/categories', categoriesRoutes);
 
 // ── Health Check ────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {

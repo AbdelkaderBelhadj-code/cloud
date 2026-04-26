@@ -47,6 +47,11 @@ const LicenseSchema = new mongoose.Schema(
             ref: 'Equipment',
             default: null,
         },
+        category: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Category',
+            default: null,
+        },
         notifiedAt90d: {
             type: Date,
             default: null,

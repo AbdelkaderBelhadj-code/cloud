@@ -24,10 +24,20 @@ const EquipmentSchema = new mongoose.Schema(
             trim: true,
             default: '',
         },
-        location: {
+        rack: {
             type: String,
             trim: true,
             default: '',
+        },
+        uStart: {
+            type: Number,
+            min: 1,
+            default: null,
+        },
+        uEnd: {
+            type: Number,
+            min: 1,
+            default: null,
         },
         purchaseDate: {
             type: Date,
@@ -57,5 +67,6 @@ const EquipmentSchema = new mongoose.Schema(
 // Index for fast searches
 EquipmentSchema.index({ type: 1 });
 EquipmentSchema.index({ status: 1 });
+EquipmentSchema.index({ rack: 1, uStart: 1, uEnd: 1 });
 
 module.exports = mongoose.model('Equipment', EquipmentSchema);

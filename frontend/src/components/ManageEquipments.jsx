@@ -6,19 +6,26 @@ import api from '../lib/api'
 import toast from 'react-hot-toast'
 
 const EQUIPMENT_TYPES = ['Serveur', 'Firewall', 'Baie stockage', 'Switch', 'Routeur']
+const RACK_COUNT = 100
+const RACKS = Array.from({ length: RACK_COUNT }, (_, i) => `Rack ${i + 1}`)
 
 function EquipmentModal({ equip, onClose, onSaved }) {
     const { register, handleSubmit, formState: { errors }, reset } = useForm({
-        defaultValues: equip || {
-            serviceTag: '', type: 'Serveur', model: '', manufacturer: '',
-            location: '', status: 'active', notes: ''
-        }
+        defaultValues: equip
+            ? { ...equip, uStart: equip.uStart ?? '', uEnd: equip.uEnd ?? '' }
+            : {
+                serviceTag: '', type: 'Serveur', model: '', manufacturer: '',
+                rack: '', uStart: '', uEnd: '', status: 'active', notes: ''
+            }
     })
     const [loading, setLoading] = useState(false)
 
     const onSubmit = async (data) => {
         setLoading(true)
         const { _id, id, createdBy, createdAt, updatedAt, __v, ...fields } = data
+        // Coerce empty U fields to null
+        fields.uStart = fields.uStart === '' || fields.uStart == null ? null : Number(fields.uStart)
+        fields.uEnd = fields.uEnd === '' || fields.uEnd == null ? null : Number(fields.uEnd)
         try {
             if (equip) {
                 await api.put(`/equipments/${equip._id}`, fields)
@@ -65,14 +72,42 @@ function EquipmentModal({ equip, onClose, onSaved }) {
                         {errors.model && <p className="form-error">{errors.model.message}</p>}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="form-label">Fabricant</label>
+                        <input className="form-input" placeholder="ex: Dell" {...register('manufacturer')} />
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4">
                         <div>
-                            <label className="form-label">Fabricant</label>
-                            <input className="form-input" placeholder="ex: Dell" {...register('manufacturer')} />
+                            <label className="form-label">Rack</label>
+                            <select className="form-input" {...register('rack')}>
+                                <option value="">— Aucun —</option>
+                                {RACKS.map((r) => (
+                                    <option key={r} value={r}>{r}</option>
+                                ))}
+                            </select>
                         </div>
                         <div>
-                            <label className="form-label">Emplacement</label>
-                            <input className="form-input" placeholder="ex: Rack A1" {...register('location')} />
+                            <label className="form-label">U Start</label>
+                            <input
+                                type="number"
+                                min="1"
+                                className="form-input"
+                                placeholder="ex: 5"
+                                {...register('uStart', { min: { value: 1, message: '≥ 1' } })}
+                            />
+                            {errors.uStart && <p className="form-error">{errors.uStart.message}</p>}
+                        </div>
+                        <div>
+                            <label className="form-label">U End</label>
+                            <input
+                                type="number"
+                                min="1"
+                                className="form-input"
+                                placeholder="ex: 7"
+                                {...register('uEnd', { min: { value: 1, message: '≥ 1' } })}
+                            />
+                            {errors.uEnd && <p className="form-error">{errors.uEnd.message}</p>}
                         </div>
                     </div>
 
@@ -171,16 +206,18 @@ export default function ManageEquipments() {
                     <h2 className="text-lg font-semibold">🔧 Gestion des Équipements</h2>
                     <p className="text-slate-400 text-sm">{total} équipement(s) au total</p>
                 </div>
-                <button
-                    id="add-equip-btn"
-                    onClick={() => setModal('create')}
-                    className="btn-primary"
-                >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Ajouter
-                </button>
+                {isAdmin && (
+                    <button
+                        id="add-equip-btn"
+                        onClick={() => setModal('create')}
+                        className="btn-primary"
+                    >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        Ajouter
+                    </button>
+                )}
             </div>
 
             {/* Filters */}
@@ -225,7 +262,7 @@ export default function ManageEquipments() {
                                     <th>Type</th>
                                     <th>Modèle</th>
                                     <th>Fabricant</th>
-                                    <th>Emplacement</th>
+                                    <th>Rack / U</th>
                                     <th>Statut</th>
                                     <th>Ajouté le</th>
                                     <th>Actions</th>
@@ -242,25 +279,31 @@ export default function ManageEquipments() {
                                         </td>
                                         <td className="font-medium">{eq.model}</td>
                                         <td>{eq.manufacturer || '—'}</td>
-                                        <td>{eq.location || '—'}</td>
+                                        <td>
+                                            {eq.rack
+                                                ? <span className="text-xs">{eq.rack}{eq.uStart != null && eq.uEnd != null ? ` · U${eq.uStart}-${eq.uEnd}` : ''}</span>
+                                                : '—'}
+                                        </td>
                                         <td>{getStatusBadge(eq.status)}</td>
                                         <td className="text-xs text-slate-500">{new Date(eq.createdAt).toLocaleDateString('fr-FR')}</td>
                                         <td>
                                             <div className="flex items-center gap-2">
-                                                <button
-                                                    onClick={() => setModal(eq)}
-                                                    className="btn-success text-xs px-2 py-1"
-                                                >
-                                                    ✏️ Modifier
-                                                </button>
                                                 {isAdmin && (
-                                                    <button
-                                                        onClick={() => handleDelete(eq._id)}
-                                                        disabled={deleting === eq._id}
-                                                        className="btn-danger text-xs px-2 py-1"
-                                                    >
-                                                        🗑️ Supprimer
-                                                    </button>
+                                                    <>
+                                                        <button
+                                                            onClick={() => setModal(eq)}
+                                                            className="btn-success text-xs px-2 py-1"
+                                                        >
+                                                            ✏️ Modifier
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDelete(eq._id)}
+                                                            disabled={deleting === eq._id}
+                                                            className="btn-danger text-xs px-2 py-1"
+                                                        >
+                                                            🗑️ Supprimer
+                                                        </button>
+                                                    </>
                                                 )}
                                             </div>
                                         </td>

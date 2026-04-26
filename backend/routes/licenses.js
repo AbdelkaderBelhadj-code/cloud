@@ -18,15 +18,17 @@ const licenseSchema = Joi.object({
     status: Joi.string().valid('active', 'expired', 'pending').optional(),
     notes: Joi.string().allow('').optional(),
     equipmentId: Joi.string().allow(null, '').optional(),
+    category: Joi.string().allow(null, '').optional(),
 });
 
 // GET /api/licenses
 router.get('/', async (req, res) => {
     try {
-        const { page = 1, limit = 20, status, type, search, expiringSoon } = req.query;
+        const { page = 1, limit = 20, status, type, category, search, expiringSoon } = req.query;
         const filter = {};
         if (status) filter.status = status;
         if (type) filter.type = { $regex: type, $options: 'i' };
+        if (category) filter.category = category;
         if (search) {
             filter.$or = [
                 { type: { $regex: search, $options: 'i' } },
@@ -42,6 +44,7 @@ router.get('/', async (req, res) => {
         const total = await License.countDocuments(filter);
         const licenses = await License.find(filter)
             .populate('equipmentId', 'serviceTag type model')
+            .populate('category', 'name')
             .populate('createdBy', 'email firstName lastName')
             .sort({ expirationDate: 1 })
             .skip((page - 1) * limit)
@@ -66,23 +69,26 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// POST /api/licenses
-router.post('/', async (req, res) => {
+// POST /api/licenses  (admin)
+router.post('/', adminRole, async (req, res) => {
     try {
         const { error, value } = licenseSchema.validate(req.body, { stripUnknown: true });
         if (error) return res.status(400).json({ message: error.details[0].message });
 
         const lic = new License({ ...value, createdBy: req.user._id });
         await lic.save();
-        await lic.populate('equipmentId', 'serviceTag type model');
+        await lic.populate([
+            { path: 'equipmentId', select: 'serviceTag type model' },
+            { path: 'category', select: 'name' },
+        ]);
         res.status(201).json(lic);
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
 });
 
-// PUT /api/licenses/:id
-router.put('/:id', async (req, res) => {
+// PUT /api/licenses/:id  (admin)
+router.put('/:id', adminRole, async (req, res) => {
     try {
         const { error, value } = licenseSchema.validate(req.body, { stripUnknown: true });
         if (error) return res.status(400).json({ message: error.details[0].message });
@@ -108,7 +114,9 @@ router.put('/:id', async (req, res) => {
         const lic = await License.findByIdAndUpdate(req.params.id, update, {
             new: true,
             runValidators: true,
-        }).populate('equipmentId', 'serviceTag type model');
+        })
+            .populate('equipmentId', 'serviceTag type model')
+            .populate('category', 'name');
         res.json(lic);
     } catch (err) {
         res.status(500).json({ message: err.message });

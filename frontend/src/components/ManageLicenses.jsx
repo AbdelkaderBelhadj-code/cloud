@@ -5,7 +5,7 @@ import { selectIsAdmin } from '../store/authSlice'
 import api from '../lib/api'
 import toast from 'react-hot-toast'
 
-function LicenseModal({ license, equipments, onClose, onSaved }) {
+function LicenseModal({ license, equipments, categories, onClose, onSaved }) {
     const { register, handleSubmit, formState: { errors } } = useForm({
         defaultValues: license
             ? {
@@ -13,11 +13,12 @@ function LicenseModal({ license, equipments, onClose, onSaved }) {
                 expirationDate: license.expirationDate?.slice(0, 10),
                 purchaseDate: license.purchaseDate?.slice(0, 10) || '',
                 equipmentId: license.equipmentId?._id || '',
+                category: license.category?._id || '',
             }
             : {
                 type: '', licenseKey: '', vendor: '', expirationDate: '',
                 purchaseDate: '', cost: '', seats: 1, status: 'active', notes: '',
-                equipmentId: ''
+                equipmentId: '', category: ''
             }
     })
     const [loading, setLoading] = useState(false)
@@ -25,7 +26,11 @@ function LicenseModal({ license, equipments, onClose, onSaved }) {
     const onSubmit = async (data) => {
         setLoading(true)
         const { _id, id, createdBy, createdAt, updatedAt, __v, daysUntilExpiry, notificationSent, ...fields } = data
-        const payload = { ...fields, equipmentId: fields.equipmentId || null }
+        const payload = {
+            ...fields,
+            equipmentId: fields.equipmentId || null,
+            category: fields.category || null,
+        }
         try {
             if (license) {
                 await api.put(`/licenses/${license._id}`, payload)
@@ -96,16 +101,27 @@ function LicenseModal({ license, equipments, onClose, onSaved }) {
                         </div>
                     </div>
 
-                    <div>
-                        <label className="form-label">Équipement associé</label>
-                        <select className="form-input" {...register('equipmentId')}>
-                            <option value="">— Aucun équipement —</option>
-                            {equipments.map((eq) => (
-                                <option key={eq._id} value={eq._id}>
-                                    [{eq.type}] {eq.serviceTag} — {eq.model}
-                                </option>
-                            ))}
-                        </select>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="form-label">Équipement associé</label>
+                            <select className="form-input" {...register('equipmentId')}>
+                                <option value="">— Aucun équipement —</option>
+                                {equipments.map((eq) => (
+                                    <option key={eq._id} value={eq._id}>
+                                        [{eq.type}] {eq.serviceTag} — {eq.model}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="form-label">Catégorie</label>
+                            <select className="form-input" {...register('category')}>
+                                <option value="">— Aucune —</option>
+                                {categories.map((c) => (
+                                    <option key={c._id} value={c._id}>{c.name}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
 
                     <div>
@@ -138,9 +154,11 @@ export default function ManageLicenses() {
     const isAdmin = useSelector(selectIsAdmin)
     const [licenses, setLicenses] = useState([])
     const [equipments, setEquipments] = useState([])
+    const [categories, setCategories] = useState([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
     const [statusFilter, setStatusFilter] = useState('')
+    const [categoryFilter, setCategoryFilter] = useState('')
     const [expiringSoon, setExpiringSoon] = useState(false)
     const [page, setPage] = useState(1)
     const [totalPages, setTotalPages] = useState(1)
@@ -154,6 +172,7 @@ export default function ManageLicenses() {
             const params = new URLSearchParams({ page, limit: 15 })
             if (search) params.set('search', search)
             if (statusFilter) params.set('status', statusFilter)
+            if (categoryFilter) params.set('category', categoryFilter)
             if (expiringSoon) params.set('expiringSoon', 'true')
             const { data } = await api.get(`/licenses?${params}`)
             setLicenses(data.licenses)
@@ -164,12 +183,13 @@ export default function ManageLicenses() {
         } finally {
             setLoading(false)
         }
-    }, [page, search, statusFilter, expiringSoon])
+    }, [page, search, statusFilter, categoryFilter, expiringSoon])
 
     useEffect(() => { fetchLicenses() }, [fetchLicenses])
 
     useEffect(() => {
         api.get('/equipments?limit=200').then(({ data }) => setEquipments(data.equipments)).catch(() => { })
+        api.get('/categories').then(({ data }) => setCategories(data)).catch(() => { })
     }, [])
 
     const handleDelete = async (id) => {
@@ -204,12 +224,14 @@ export default function ManageLicenses() {
                     <h2 className="text-lg font-semibold">🗝️ Gestion des Licences</h2>
                     <p className="text-slate-400 text-sm">{total} licence(s) au total</p>
                 </div>
-                <button onClick={() => setModal('create')} className="btn-primary" id="add-license-btn">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Ajouter
-                </button>
+                {isAdmin && (
+                    <button onClick={() => setModal('create')} className="btn-primary" id="add-license-btn">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        Ajouter
+                    </button>
+                )}
             </div>
 
             {/* Filters */}
@@ -230,6 +252,16 @@ export default function ManageLicenses() {
                     <option value="active">Active</option>
                     <option value="expired">Expirée</option>
                     <option value="pending">En attente</option>
+                </select>
+                <select
+                    value={categoryFilter}
+                    onChange={(e) => { setCategoryFilter(e.target.value); setPage(1) }}
+                    className="form-input w-48"
+                >
+                    <option value="">Toutes catégories</option>
+                    {categories.map((c) => (
+                        <option key={c._id} value={c._id}>{c.name}</option>
+                    ))}
                 </select>
                 <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer select-none">
                     <input
@@ -262,6 +294,7 @@ export default function ManageLicenses() {
                             <thead>
                                 <tr>
                                     <th>Type</th>
+                                    <th>Catégorie</th>
                                     <th>Vendor</th>
                                     <th>Équipement</th>
                                     <th>Expiration</th>
@@ -276,6 +309,7 @@ export default function ManageLicenses() {
                                 {licenses.map((lic) => (
                                     <tr key={lic._id}>
                                         <td className="font-medium text-brand-300 max-w-[180px] truncate" title={lic.type}>{lic.type}</td>
+                                        <td>{lic.category?.name || '—'}</td>
                                         <td>{lic.vendor || '—'}</td>
                                         <td>
                                             {lic.equipmentId
@@ -291,15 +325,17 @@ export default function ManageLicenses() {
                                         <td>{getStatusBadge(lic.status)}</td>
                                         <td>
                                             <div className="flex items-center gap-2">
-                                                <button onClick={() => setModal(lic)} className="btn-success text-xs px-2 py-1">✏️</button>
                                                 {isAdmin && (
-                                                    <button
-                                                        onClick={() => handleDelete(lic._id)}
-                                                        disabled={deleting === lic._id}
-                                                        className="btn-danger text-xs px-2 py-1"
-                                                    >
-                                                        🗑️
-                                                    </button>
+                                                    <>
+                                                        <button onClick={() => setModal(lic)} className="btn-success text-xs px-2 py-1">✏️</button>
+                                                        <button
+                                                            onClick={() => handleDelete(lic._id)}
+                                                            disabled={deleting === lic._id}
+                                                            className="btn-danger text-xs px-2 py-1"
+                                                        >
+                                                            🗑️
+                                                        </button>
+                                                    </>
                                                 )}
                                             </div>
                                         </td>
@@ -325,6 +361,7 @@ export default function ManageLicenses() {
                 <LicenseModal
                     license={modal === 'create' ? null : modal}
                     equipments={equipments}
+                    categories={categories}
                     onClose={() => setModal(null)}
                     onSaved={fetchLicenses}
                 />
